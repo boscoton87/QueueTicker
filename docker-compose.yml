@@ -1,0 +1,28 @@
+version: "3.7"
+services:
+    qticker-bot:
+        build:
+            context: .
+            dockerfile: QueueTicker.Bot/Dockerfile
+        restart: always
+        ports:
+            - "443:443"
+        env_file:
+            - ./qticker.env
+        depends_on:
+            - qticker-db
+    qticker-db:
+        image: ${QueueTicker_DB_Image}
+        restart: always
+        environment:
+            MYSQL_DATABASE: "${QueueTicker_DB_Name}"
+            MYSQL_USER: "${QueueTicker_DB_User}"
+            MYSQL_PASSWORD: "${QueueTicker_DB_Password}"
+            MYSQL_ROOT_PASSWORD: "${QueueTicker_DB_Password_Root}"
+        ports:
+            - "3310:3306"
+        expose:
+            - "3306"
+        volumes:
+            - ${QueueTicker_DB_Mount}/data:/var/lib/mysql:rshared
+            - ${QueueTicker_DB_Mount}/config:/config:rshared
