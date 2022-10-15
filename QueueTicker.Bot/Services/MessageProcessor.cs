@@ -60,7 +60,7 @@ namespace QueueTicker.Bot.Services {
 				var ctx = new SocketInteractionContext( _client, interaction );
 				var result = await _interactionService.ExecuteCommandAsync( ctx, scope.ServiceProvider );
 			};
-			await _client.SetGameAsync( "Checks for queues on Benediction" );
+			await _client.SetGameAsync( "To create a queue ticker use /create-queue-ticker" );
 		}
 
 		private void StartDataFetchJob() {
