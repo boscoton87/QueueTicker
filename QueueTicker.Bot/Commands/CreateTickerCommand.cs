@@ -28,7 +28,6 @@ namespace QueueTicker.Bot.Commands {
 			var dataPoints = await _queueDataPointRepository.GetDataPoints( 1 );
 			var publishedMessage = await ReplyAsync( embed: TickerEmbedHelpers.BuildTickerEmbed( dataPoints.SingleOrDefault() ) );
 			if ( publishedMessage.Channel is IGuildChannel guildChannel ) {
-				var currentServerTickers = await _activeMessageRepository.GetActiveMessages( guildChannel.Guild.Id );
 				var activeMessage = new ActiveMessage {
 					MessageId = publishedMessage.Id,
 					ChannelId = guildChannel.Id,
