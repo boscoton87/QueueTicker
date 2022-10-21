@@ -1,9 +1,11 @@
 ﻿using System.Text.Json;
 using Flurl.Http;
 using QueueTicker.Core.Models;
+using QueueTicker.Core.Services.Interfaces;
 
-namespace QueueTicker.Core.Services {
-	public class QueueSourceDataService {
+namespace QueueTicker.Core.Services
+{
+	public class QueueSourceDataService : IQueueSourceDataService {
 		public async Task<List<QueueDataPoint>> GetQueueDataPoints() {
 			var pageContent = await "https://multidollar.company".GetStringAsync();
 			var startKeyword = "\"data\": JSON.parse('";

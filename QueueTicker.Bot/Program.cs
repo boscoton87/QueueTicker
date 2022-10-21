@@ -7,9 +7,10 @@ using QueueTicker.Bot.Models;
 using QueueTicker.Core.Models;
 using Microsoft.Extensions.Hosting;
 using QueueTicker.Core.Services;
-using QueueTicker.Core.Enums;
 using QueueTicker.Bot.Services;
 using Discord.Interactions;
+using Microsoft.Extensions.Logging;
+using QueueTicker.Core.Services.Interfaces;
 
 namespace QueueTicker {
 	internal class Program {
@@ -71,21 +72,25 @@ namespace QueueTicker {
 						new InteractionServiceConfig { LogLevel = LogSeverity.Info, DefaultRunMode = RunMode.Sync }
 					)
 				)
-				.AddSingleton( sp => new QueueSourceDataService() )
-				.AddSingleton( sp => new QueueDataPointRepository( sp ) )
-				.AddSingleton( sp => new ActiveMessageRepository( sp ) )
-				.AddSingleton( sp => new ConsoleLoggingService( LogLevel.Info ) )
+				.AddSingleton<IQueueSourceDataService>( sp => new QueueSourceDataService() )
+				.AddSingleton<IQueueDataPointRepository>( sp => new QueueDataPointRepository( sp ) )
+				.AddSingleton<IActiveMessageRepository>( sp => new ActiveMessageRepository( sp ) )
 				.AddSingleton( sp =>
 					new MessageProcessor(
 						sp.GetRequiredService<DiscordSocketClient>(),
 						sp.GetRequiredService<InteractionService>(),
-						sp.GetRequiredService<QueueDataPointRepository>(),
-						sp.GetRequiredService<ActiveMessageRepository>(),
-						sp.GetRequiredService<QueueSourceDataService>(),
-						sp.GetRequiredService<ConsoleLoggingService>(),
+						sp.GetRequiredService<IQueueDataPointRepository>(),
+						sp.GetRequiredService<IActiveMessageRepository>(),
+						sp.GetRequiredService<IQueueSourceDataService>(),
+						sp.GetRequiredService<ILogger<MessageProcessor>>(),
 						sp,
 						settings.DiscordToken
 					)
+				)
+				.AddLogging( lb =>
+					lb.AddSimpleConsole( c => c.IncludeScopes = true )
+					.SetMinimumLevel( LogLevel.Information )
+					.AddFilter( "Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning )
 				)
 				.BuildServiceProvider();
 		}

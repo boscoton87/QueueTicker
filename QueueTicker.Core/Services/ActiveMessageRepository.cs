@@ -1,9 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using QueueTicker.Core.Models;
+using QueueTicker.Core.Services.Interfaces;
 
 namespace QueueTicker.Core.Services {
-	public class ActiveMessageRepository {
+	public class ActiveMessageRepository : IActiveMessageRepository {
 		private readonly IServiceProvider _serviceProvider;
 
 		public ActiveMessageRepository( IServiceProvider serviceProvider ) {
@@ -14,14 +15,28 @@ namespace QueueTicker.Core.Services {
 			using var scope = _serviceProvider.CreateScope();
 			using QueueTickerDbContext dbContext = scope.ServiceProvider.GetRequiredService<QueueTickerDbContext>();
 			return await dbContext.ActiveMessages
-				.Select( am => new ActiveMessage {
-					MessageId = am.MessageId,
-					ChannelId = am.ChannelId,
-					ServerId = am.ServerId,
-					NotifyChannelId = am.NotifyChannelId
-				}
-				)
-				.ToListAsync();
+				.Select( am =>
+					new ActiveMessage {
+						MessageId = am.MessageId,
+						ChannelId = am.ChannelId,
+						ServerId = am.ServerId,
+						NotifyChannelId = am.NotifyChannelId
+					}
+				).ToListAsync();
+		}
+
+		public async Task<List<ActiveMessage>> GetActiveMessages( ulong serverId ) {
+			using var scope = _serviceProvider.CreateScope();
+			using QueueTickerDbContext dbContext = scope.ServiceProvider.GetRequiredService<QueueTickerDbContext>();
+			return await dbContext.ActiveMessages
+				.Where( am => am.ServerId == serverId )
+				.Select( am =>
+					new ActiveMessage {
+						MessageId = am.MessageId,
+						ChannelId = am.ChannelId,
+						ServerId = am.ServerId
+					}
+				).ToListAsync();
 		}
 
 		public async Task CreateActiveMessage( ActiveMessage activeMessage ) {

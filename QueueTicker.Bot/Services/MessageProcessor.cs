@@ -3,29 +3,30 @@ using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using QueueTicker.Bot.Helpers;
-using QueueTicker.Core.Enums;
 using QueueTicker.Core.Models;
 using QueueTicker.Core.Services;
+using QueueTicker.Core.Services.Interfaces;
 
 namespace QueueTicker.Bot.Services {
 	public class MessageProcessor {
 		private readonly DiscordSocketClient _client;
 		private readonly InteractionService _interactionService;
-		private readonly QueueDataPointRepository _queueDataPointRepository;
-		private readonly ActiveMessageRepository _activeMessageRepository;
-		private readonly QueueSourceDataService _queueSourceDataService;
-		private readonly ConsoleLoggingService _logger;
+		private readonly IQueueDataPointRepository _queueDataPointRepository;
+		private readonly IActiveMessageRepository _activeMessageRepository;
+		private readonly IQueueSourceDataService _queueSourceDataService;
+		private readonly ILogger _logger;
 		private readonly IServiceProvider _serviceProvider;
 		private readonly string _discordToken;
 
 		public MessageProcessor(
 			DiscordSocketClient client,
 			InteractionService interactionService,
-			QueueDataPointRepository queueDataPointRepository,
-			ActiveMessageRepository activeMessageRepository,
-			QueueSourceDataService queueSourceDataService,
-			ConsoleLoggingService logger,
+			IQueueDataPointRepository queueDataPointRepository,
+			IActiveMessageRepository activeMessageRepository,
+			IQueueSourceDataService queueSourceDataService,
+			ILogger logger,
 			IServiceProvider serviceProvider,
 			string discordToken
 		) {
@@ -67,19 +68,32 @@ namespace QueueTicker.Bot.Services {
 			var dataFetchProcessor = new DataFetchProcessor(
 				_queueDataPointRepository,
 				_queueSourceDataService,
-				_logger,
+				_serviceProvider.GetRequiredService<ILogger<DataFetchProcessor>>(),
 				UpdateTickers
 			);
 			_ = dataFetchProcessor.StartJob();
 		}
 
-		private async Task LogMessage( LogMessage logMessage ) {
-			await _logger.LogMessage(
-				( LogLevel ) logMessage.Severity,
-				logMessage.Message,
+		private Task LogMessage( LogMessage logMessage ) {
+			_logger.Log(
+				ConverSeverityToLogLevel( logMessage.Severity ),
 				logMessage.Exception,
+				logMessage.Message,
 				logMessage.Source
 			);
+			return Task.CompletedTask;
+		}
+
+		private LogLevel ConverSeverityToLogLevel( LogSeverity severity ) {
+			return severity switch {
+				LogSeverity.Debug => LogLevel.Debug,
+				LogSeverity.Verbose => LogLevel.Trace,
+				LogSeverity.Info => LogLevel.Information,
+				LogSeverity.Warning => LogLevel.Warning,
+				LogSeverity.Error => LogLevel.Error,
+				LogSeverity.Critical => LogLevel.Critical,
+				_ => LogLevel.None
+			};
 		}
 
 		private async Task UpdateTickers( QueueDataPoint dataPoint, bool isStartOfQueue ) {
@@ -91,12 +105,12 @@ namespace QueueTicker.Bot.Services {
 						await messageChannel.ModifyMessageAsync( message.MessageId, mp => mp.Embed = TickerEmbedHelpers.BuildTickerEmbed( dataPoint ) );
 					} catch ( HttpException e ) {
 						if ( e.DiscordCode == DiscordErrorCode.UnknownMessage ) {
-							await _logger.LogMessage( LogLevel.Warning, "Unknown message encountered, purged from tracking", e, "MessageProcessor.UpdateTickers" );
+							_logger.LogWarning( "Unknown message encountered, purged from tracking" );
 							await _activeMessageRepository.DeleteActiveMessage( message );
 							activeMessages.Remove( message );
 						}
 					} catch ( Exception e ) {
-						await _logger.LogMessage( LogLevel.Error, "Error occured updating ticker", e, "MessageProcessor.UpdateTickers" );
+						_logger.LogError( e, "Error occured updating ticker" );
 					}
 				}
 			}
@@ -115,12 +129,12 @@ namespace QueueTicker.Bot.Services {
 			if ( channel is IGuildChannel guildChannel ) {
 				var activeMessage = new ActiveMessage {
 					MessageId = cachedMessage.Id,
-					ServerId = guildChannel.Guild.Id
+					ServerId = guildChannel.Guild.Id,
+					ChannelId = guildChannel.Id
 				};
 				var messageDeleted = await _activeMessageRepository.DeleteActiveMessage( activeMessage );
 				if ( messageDeleted ) {
-					await _logger.LogMessage(
-						LogLevel.Info,
+					_logger.LogInformation(
 						$"Deleting active message: serverId -> {activeMessage.ServerId}, messageId -> {activeMessage.MessageId}"
 					);
 				}

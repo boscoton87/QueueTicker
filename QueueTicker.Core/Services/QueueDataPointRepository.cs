@@ -1,9 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using QueueTicker.Core.Models;
+using QueueTicker.Core.Services.Interfaces;
 
 namespace QueueTicker.Core.Services {
-	public class QueueDataPointRepository {
+	public class QueueDataPointRepository : IQueueDataPointRepository {
 		private readonly IServiceProvider _serviceProvider;
 
 		public QueueDataPointRepository( IServiceProvider serviceProvider ) {
